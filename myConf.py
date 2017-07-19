@@ -30,6 +30,23 @@ if __name__ == '__main__':
     completeConf.remove('GEOIP,CN,DIRECT\n')
     completeConf.remove('[URL Rewrite]\n')
     completeConf.remove('^http://(www.)?google.cn https://www.google.com header\n')
+    completeConf.remove('IP-CIDR,192.168.0.0/16,DIRECT\n')
+    completeConf.remove('IP-CIDR,10.0.0.0/8,DIRECT\n')
+    completeConf.remove('IP-CIDR,172.16.0.0/12,DIRECT\n')
+    completeConf.remove('IP-CIDR,127.0.0.0/8,DIRECT\n')
+
+    # 在规则 IP-CIDR 末尾添加 ,no-resolve 规则
+    copyCompleteConf = completeConf
+    for i in copyCompleteConf:
+        if 'IP-CIDR' in i:
+            replaceIndex = completeConf.index(i)
+            i = i.strip('\n')
+            i = i + ',no-resolve\n'
+            completeConf[replaceIndex] = i
+
+
+
+
     # 将规则写入 myConf.conf 文件中
     with open('myConf.conf', 'w') as f:
         f.writelines(completeConf)
