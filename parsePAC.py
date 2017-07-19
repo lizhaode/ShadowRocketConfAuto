@@ -11,7 +11,7 @@ class parsePAC():
     配置文件中
     '''
 
-    def getPAC(self):
+    def __init__(self):
         '''
         在tmp目录下，生成一个干净的，只存在PAC规则地址的文件，为下一步处理做准备，文件名 allDomainFile.txt
         '''
@@ -34,25 +34,9 @@ class parsePAC():
             with open(pureGFWFile, 'a') as domain:
                 # 去除空行
                 if not str.isspace(i):
-                    if self.wipeGoogle(i):
-                        domain.write(self.wipeGoogle(i))
+                    domain.write(i)
         # 复制一份，作为 DOMAIN 配置时使用
         shutil.copy(pureGFWFile, 'tmp/tmp.txt')
-
-    def wipeGoogle(self, domainString):
-        '''
-        去除PAC文件中含有Google的规则
-        '''
-        if 'google' in domainString:
-            return None
-        return domainString
-
-    def addGoogle(self, file):
-        '''
-        在最终规则文件的末尾，增加一条匹配所有Google网站的规则
-        '''
-        with open(file, 'a') as f:
-            f.write('DOMAIN-KEYWORD,google,Proxy\n')
 
     def checkDuplicate(self, checkFile):
         '''
@@ -64,18 +48,18 @@ class parsePAC():
         with open(checkFile, 'w')as f:
             f.writelines(tmp)
 
-    def reutrnDomainSuffixList(self, originalFile, domainSuffixFile):
+    def reutrnDomainSuffixList(self):
         '''
         过滤PAC文件，生成 DOMAIN-SUFFIX 文件，文件名 domainSuffixFile.txt
         '''
-        with open(originalFile) as f:
+        with open('tmp/GFW.txt') as f:
             for i in f.readlines():
                 # 去掉末尾的换行符
                 i = i.strip('\n')
                 # 处理 || 开头的规则
                 if i.startswith('||'):
-                    domainSuffix = 'DOMAIN-SUFFIX,{url},PROXY\n'.format(url=i.strip('||'))
-                    with open(domainSuffixFile, 'a') as file:
+                    domainSuffix = 'DOMAIN-SUFFIX,{url},Proxy\n'.format(url=i.strip('||'))
+                    with open('tmp/domainSuffixFile.txt', 'a') as file:
                         file.write(domainSuffix)
                 # 处理 | 开头的规则
                 elif i.startswith('|h'):
@@ -84,31 +68,31 @@ class parsePAC():
                     # 有的网址是www开头的，需要去掉 www
                     if 'www.' in tmpDomain:
                         tmp = tmpDomain.split('www.')[1]
-                        domainSuffix = 'DOMAIN-SUFFIX,{url},PROXY\n'.format(url=tmp)
-                        with open(domainSuffixFile, 'a') as file:
+                        domainSuffix = 'DOMAIN-SUFFIX,{url},Proxy\n'.format(url=tmp)
+                        with open('tmp/domainSuffixFile.txt', 'a') as file:
                             file.write(domainSuffix)
                     elif '*' in tmpDomain:
                         tmp = tmpDomain.split('*.')
                         if len(tmp) != 1:
-                            domainSuffix = 'DOMAIN-SUFFIX,{url},PROXY\n'.format(url=tmp[1])
-                            with open(domainSuffixFile, 'a') as file:
+                            domainSuffix = 'DOMAIN-SUFFIX,{url},Proxy\n'.format(url=tmp[1])
+                            with open('tmp/domainSuffixFile.txt', 'a') as file:
                                 file.write(domainSuffix)
                 # 处理 . 开头的规则
                 elif i.startswith('.'):
                     tmp = i.split('/')[0].strip('.')
-                    domainSuffix = 'DOMAIN-SUFFIX,{url},PROXY\n'.format(url=tmp)
-                    with open(domainSuffixFile, 'a') as file:
+                    domainSuffix = 'DOMAIN-SUFFIX,{url},Proxy\n'.format(url=tmp)
+                    with open('tmp/domainSuffixFile.txt', 'a') as file:
                         file.write(domainSuffix)
 
         # 调用去重的方法，去除重复的数据
-        self.checkDuplicate(domainSuffixFile)
+        self.checkDuplicate('tmp/domainSuffixFile.txt')
 
-    def returnDomainList(self, originalFile, domainFile):
+    def returnDomainList(self):
         '''
         过滤PAC文件，生成 DOMAIN 文件，文件名 domain.txt
         在过滤规则之前，需要先去除 "||" , "|" , "." , "@" 开头的数据
         '''
-        tmpFile = open(originalFile)
+        tmpFile = open('tmp/tmp.txt')
         tmpReadlines = tmpFile.readlines()
         tmpFile.close()
         allList = []
@@ -122,21 +106,22 @@ class parsePAC():
             elif i.startswith('@'):
                 continue
             else:
-                with open(originalFile, 'w')as f:
+                with open('tmp/tmp.txt', 'w')as f:
                     allList.append(i)
                     f.writelines(allList)
         # 开始创建 DOMAIN 规则文件
-        with open(originalFile) as f:
+        with open('tmp/tmp.txt') as f:
             for i in f.readlines():
                 i = i.strip('\n')
-                domain = 'DOMAIN,{url},PROXY\n'.format(url=i)
-                with open(domainFile, 'a') as file:
+                domain = 'DOMAIN,{url},Proxy\n'.format(url=i)
+                with open('tmp/domainFile.txt', 'a') as file:
                     file.write(domain)
         # 去重
-        self.checkDuplicate(domainFile)
+        self.checkDuplicate('tmp/domainFile.txt')
+        # 删除临时的 tmp.txt
+        os.remove('tmp/tmp.txt')
 
 
 if __name__ == '__main__':
-    parsePAC().getPAC()
-    parsePAC().reutrnDomainSuffixList('tmp/GFW.txt', 'tmp/domainSuffixFile.txt')
-    parsePAC().returnDomainList('tmp/tmp.txt', 'tmp/domainFile.txt')
+    parsePAC().reutrnDomainSuffixList()
+    parsePAC().returnDomainList()
